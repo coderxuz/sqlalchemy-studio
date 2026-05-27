@@ -12,9 +12,9 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <div className="app-root min-h-screen flex bg-neutral-950 text-neutral-100">
+    <div className="app-root flex min-h-screen flex-col bg-neutral-950 text-neutral-100 lg:h-screen lg:flex-row lg:overflow-hidden">
       <Sidebar />
-      <main className="flex-1 p-6">
+      <main className="min-w-0 flex-1 overflow-x-hidden p-3 sm:p-4 lg:overflow-auto lg:p-6">
         <Suspense fallback={<div>Loading...</div>}>
           <Outlet />
         </Suspense>

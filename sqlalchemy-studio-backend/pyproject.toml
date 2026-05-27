@@ -9,3 +9,17 @@ dependencies = [
     "sqlalchemy>=2.0.50",
     "uvicorn>=0.48.0",
 ]
+authors = [
+    { name = "Xursand Qarlibayev", email = "coderxuz2009@gmail.com" },
+]
+license = { text = "MIT" }
+keywords = ["sqlalchemy", "database", "inspector", "studio"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+]
+urls = { "Homepage" = "https://github.com/coderxuz/sqlalchemy-studio", "Source" = "https://github.com/coderxuz/sqlalchemy-studio" }

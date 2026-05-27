@@ -1,1 +1,1 @@
-export const apiBase = (import.meta as any).env?.VITE_API_URL || 'http://localhost:9000'
+export const apiBase = '/api'

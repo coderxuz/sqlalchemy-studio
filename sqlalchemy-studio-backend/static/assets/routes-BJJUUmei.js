@@ -1,0 +1,1 @@
+import{a as e}from"./index-0qQM-QLq.js";var t=e();function n(){return(0,t.jsxs)(`div`,{className:`p-8`,children:[(0,t.jsx)(`h1`,{className:`text-4xl font-bold`,children:`Welcome to TanStack Start`}),(0,t.jsxs)(`p`,{className:`mt-4 text-lg`,children:[`Edit `,(0,t.jsx)(`code`,{children:`src/routes/index.tsx`}),` to get started.`]})]})}export{n as component};

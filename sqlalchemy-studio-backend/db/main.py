@@ -1,13 +1,18 @@
-from sqlalchemy import create_engine, inspect, Engine, Table, select
+from sqlalchemy import and_, create_engine, func, inspect, Engine, or_, select, Table
 from sqlalchemy.engine.interfaces import ReflectedColumn
 from sqlalchemy.orm import DeclarativeBase
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import uvicorn
+
 
 from backend.main import create_tables_router
 
-from typing import Self, TypedDict, Any, cast
+from typing import Self, TypedDict, Any, cast, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.main import FilterRequest
 
 engine = create_engine("sqlite:///test.db")
 
@@ -31,12 +36,20 @@ class SingleTableType(TypedDict):
     columns: list[ColumnDetails]
 
 
+class GetRowsResponse(TypedDict):
+    rows: list[dict[str, Any]]
+    total_count: int
+
+
 class Studio:
     def __init__(self: Self, engine: Engine, base: DeclarativeBase) -> None:
         self.engine = engine
         self.inspector = inspect(self.engine)
         self.app = FastAPI()
         self._register_routes()
+        # Serve built frontend from the `static` directory at the project root.
+        # Keep this catch-all mount after API routes so `/api/*` resolves first.
+        
         self._set_cors()
         self.base = base
 
@@ -57,6 +70,7 @@ class Studio:
 
     def _register_routes(self):
         self.app.include_router(create_tables_router(self))
+        self.app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
     def run(self, port: int = 8000):
         uvicorn.run(self.app, host="0.0.0.0", port=port)
@@ -104,7 +118,6 @@ class Studio:
         pk_constraint = self.inspector.get_pk_constraint(table_name) or {}
         # MyPy needs to know this evaluates cleanly to a list of strings
         primary_keys = cast(list[str], pk_constraint.get("constrained_columns", []))
-
         # 4. Extract and type-cast column information
         columns_data: list[ColumnDetails] = []
 
@@ -131,19 +144,17 @@ class Studio:
 
         return response_data
 
-    def get_rows(self, table_name: str, limit: int = 10):
+    def get_rows_advanced(
+        self: Self, table_name: str, payload: "FilterRequest"
+    ) -> GetRowsResponse:
         """
-        Checks if a table exists, fetches its rows up to the limit using
-        SQLAlchemy Core expressions, and returns them as a list of dictionaries.
+        Advanced filtering using logical operator trees matching custom UI filters.
         """
-        # 1. Check if the table exists
         if not self.inspector.has_table(table_name):
             raise HTTPException(
                 status_code=404, detail=f"Table '{table_name}' not found."
             )
 
-        # 2. Reflect the table dynamically from the database
-        # 'autoload_with' reads the columns and types automatically from the DB
         table = Table(
             table_name,
             self.base.metadata,
@@ -151,13 +162,66 @@ class Studio:
             extend_existing=True,
         )
 
-        # 3. Construct the query purely in SQLAlchemy
-        # This translates to: SELECT * FROM table_name LIMIT :limit
-        query = select(table).limit(limit)
+        rows_query = select(table)
+        count_query = select(func.count()).select_from(table)
 
-        # 4. Execute the query
+        # Build dynamic expressions clauses
+        if payload.filters:
+            conditions = []
+
+            for cond in payload.filters:
+                if cond.column not in table.c:
+                    continue  # Guard against non-existent columns safely
+
+                col = table.c[cond.column]
+                val = cond.value
+
+                # Map string operators to SQLAlchemy expressions
+                if cond.operator == "equals":
+                    expr = col == val
+                elif cond.operator == "not_equals":
+                    expr = col != val
+                elif cond.operator == "contains":
+                    expr = col.ilike(f"%{val}%")
+                elif cond.operator == "starts_with":
+                    expr = col.ilike(f"{val}%")
+                elif cond.operator == "ends_with":
+                    expr = col.ilike(f"%{val}")
+                elif cond.operator == "greater_than":
+                    expr = col > val
+                elif cond.operator == "less_than":
+                    expr = col < val
+                elif cond.operator == "greater_than_or_equals":
+                    expr = col >= val
+                elif cond.operator == "less_than_or_equals":
+                    expr = col <= val
+                else:
+                    continue
+
+                # Combine them based on the link field ('and' / 'or')
+                if not conditions:
+                    conditions.append(expr)
+                else:
+                    if cond.link == "or":
+                        # Merge last expression with current one via OR
+                        prev_expr = conditions.pop()
+                        conditions.append(or_(prev_expr, expr))
+                    else:
+                        # Default to AND chaining
+                        prev_expr = conditions.pop()
+                        conditions.append(and_(prev_expr, expr))
+
+            if conditions:
+                rows_query = rows_query.where(*conditions)
+                count_query = count_query.where(*conditions)
+
+        # Apply Pagination
+        rows_query = rows_query.limit(payload.limit).offset(payload.offset)
+
+        # Execute
         with self.engine.connect() as connection:
-            result = connection.execute(query)
+            total = int(connection.execute(count_query).scalar_one())
+            result = connection.execute(rows_query)
             rows = [dict(row) for row in result.mappings()]
 
-        return rows
+        return {"rows": rows, "total_count": total}
