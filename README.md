@@ -1,22 +1,17 @@
-# sqlalchemy-studio-backend
+# sqlalchemy-studio
 
-Backend utilities for inspecting and serving database tables via a FastAPI `Studio`.
+Full-stack tools for exploring SQLAlchemy databases.
 
-## Install
+This repository contains two main parts:
 
-After publishing to PyPI, users can install with:
+- `sqlalchemy-studio-backend`: a small FastAPI-based server (`Studio`) that inspects
+	databases and exposes a simple API under `/api`.
+- `sqlalchemy-studio-front`: a Vite + React single-page app used to browse tables and
+	interact with the backend API.
 
-```
-pip install sqlalchemy-studio-backend
-```
+Quickstart (development)
 
-Or install directly from GitHub (for testing):
-
-```
-pip install git+https://github.com/yourusername/sqlalchemy-studio.git@main#subdirectory=sqlalchemy-studio-backend
-```
-
-## Quickstart
+1. Backend (start the Studio on a port):
 
 ```py
 from sqlalchemy import create_engine
@@ -30,29 +25,45 @@ studio = Studio(engine, Base)
 studio.run(port=9000)
 ```
 
-## Usage on GitHub and PyPI
-
-- Put a clear `README.md` (this file) at the package root — PyPI will show it on the project page.
-- Use semantic version tags (e.g. `v0.1.0`) when creating releases on GitHub.
-- Configure a GitHub Actions workflow to build and publish the package when a tag is pushed.
-
-## Publishing
-
-1. Build the distribution:
+2. Frontend (dev server with proxy - recommended while developing):
 
 ```bash
-python -m pip install --upgrade build twine
-python -m build
+cd sqlalchemy-studio-front
+npm install
+# configure proxy in vite.config.ts to target backend port (example: 9000)
+npm run dev
 ```
 
-2. Upload to PyPI (preferred) or TestPyPI for testing:
+Build & serve (production-like)
+
+1. Build the frontend:
 
 ```bash
-# set PYPI_API_TOKEN in CI or locally
-python -m twine upload dist/*
+npm --prefix sqlalchemy-studio-front install
+npm --prefix sqlalchemy-studio-front run build
 ```
 
-See the GitHub Actions workflow in `.github/workflows/publish.yml` for an automated example.
+2. Copy the `dist` output into the backend `static` folder and run the backend:
 
-## License
+```bash
+rm -rf sqlalchemy-studio-backend/static
+mkdir -p sqlalchemy-studio-backend/static
+cp -r sqlalchemy-studio-front/dist/* sqlalchemy-studio-backend/static/
+python -m test-db.main  # or use your application's entrypoint
+```
+
+Notes
+
+- API paths are mounted under `/api` to avoid SPA routing conflicts. When the backend
+	serves the built SPA the frontend can use relative paths like `/api/tables`.
+- To build the frontend pointing at a different backend port, set `VITE_API_URL` at build
+	time: `VITE_API_URL=http://localhost:9000 npm run build`.
+- See `sqlalchemy-studio-backend/README.md` for package publishing and packaging notes.
+
+Contributing
+
+PRs welcome. Please add tests and update README where applicable.
+
+License
+
 MIT — update as appropriate.

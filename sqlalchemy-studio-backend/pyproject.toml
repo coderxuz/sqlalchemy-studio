@@ -5,8 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "build>=1.5.0",
     "fastapi>=0.136.3",
     "sqlalchemy>=2.0.50",
+    "twine>=6.2.0",
     "uvicorn>=0.48.0",
 ]
 authors = [
