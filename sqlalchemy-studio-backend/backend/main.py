@@ -13,8 +13,12 @@ def create_tables_router(studio: "Studio"):
     def get_tables():
         return studio.show_tables()
 
+    @router.get("/tables/{name}")
+    def get_tables(name: str):
+        return studio.show_table(name)
+
     @router.get("/tables/{name}/rows")
-    def get_tables(name: str, limit: int=10):
+    def get_tables(name: str, limit: int = 10):
         return studio.get_rows(table_name=name, limit=limit)
 
     return router

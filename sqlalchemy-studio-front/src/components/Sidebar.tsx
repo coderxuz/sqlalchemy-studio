@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import { apiBase } from '../../common'
 
 type Column = {
   name: string
@@ -10,7 +12,6 @@ type TableInfo = {
   columns: Column[]
 }
 
-const apiBase = (import.meta as any).env?.VITE_API_URL || 'http://localhost:9000'
 
 export default function Sidebar() {
   const [tables, setTables] = useState<TableInfo[] | null>(null)
@@ -49,10 +50,10 @@ export default function Sidebar() {
   }, [tables, query])
 
   return (
-    <aside className="w-72 shrink-0 bg-slate-800 border-r border-slate-700 p-4 flex flex-col">
+    <aside className="w-72 shrink-0 bg-neutral-900 border-r border-neutral-800 p-4 flex flex-col">
       <div className="mb-4">
         <h2 className="text-lg font-semibold">SQL Studio</h2>
-        <p className="text-sm text-slate-400">Connected: local</p>
+        <p className="text-sm text-neutral-400">Connected: local</p>
       </div>
 
       <div className="flex items-center gap-2 mb-3">
@@ -60,7 +61,7 @@ export default function Sidebar() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search tables"
-          className="flex-1 bg-slate-700 placeholder-slate-400 text-slate-100 px-3 py-2 rounded"
+          className="flex-1 bg-neutral-800 placeholder-neutral-500 text-neutral-100 px-3 py-2 rounded"
         />
         <button
           title="Refresh"
@@ -75,40 +76,44 @@ export default function Sidebar() {
               .catch((e) => setError(String(e)))
               .finally(() => setLoading(false))
           }}
-          className="text-slate-300 bg-slate-700 px-2 py-1 rounded"
+          className="text-neutral-300 bg-neutral-800 px-2 py-1 rounded"
         >
           ⟳
         </button>
       </div>
 
       <div className="flex-1 overflow-auto">
-        {loading && <div className="text-sm text-slate-400">Loading tables…</div>}
+        {loading && <div className="text-sm text-neutral-400">Loading tables…</div>}
         {error && <div className="text-sm text-red-400">{error}</div>}
 
         <ul className="space-y-1">
           {filtered.map((t) => (
             <li
               key={t.table}
-              className="flex items-center justify-between p-2 rounded hover:bg-slate-700 cursor-pointer"
+              className="flex items-center justify-between p-2 hover:bg-neutral-800 cursor-pointer border border-white rounded-lg"
               role="button"
             >
-              <div className="truncate">
-                <div className="font-medium">{t.table}</div>
-                <div className="text-xs text-slate-400 truncate">
-                  {t.columns.length} columns
+              <Link to='/tables/$tableName'
+                params={{ tableName: t.table }}
+                className="flex items-center justify-between p-2 rounded hover:bg-neutral-800 cursor-pointer">
+                <div className="truncate">
+                  <div className="font-medium">{t.table}</div>
+                  <div className="text-xs text-neutral-400 truncate">
+                    {t.columns.length} columns
+                  </div>
                 </div>
-              </div>
-              <div className="ml-3 text-slate-400 text-sm">›</div>
+                <div className="ml-3 text-neutral-400 text-sm">›</div>
+              </Link>
             </li>
           ))}
 
           {tables && tables.length === 0 && (
-            <li className="text-sm text-slate-400">No tables found</li>
+            <li className="text-sm text-neutral-400">No tables found</li>
           )}
         </ul>
       </div>
 
-      <div className="mt-4 text-xs text-slate-500">v0.1 • Local dev</div>
+      <div className="mt-4 text-xs text-neutral-500">v0.1 • Local dev</div>
     </aside>
   )
 }

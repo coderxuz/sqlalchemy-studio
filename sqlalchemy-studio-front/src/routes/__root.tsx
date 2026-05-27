@@ -12,7 +12,7 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <div className="app-root min-h-screen flex bg-slate-900 text-slate-100">
+    <div className="app-root min-h-screen flex bg-neutral-950 text-neutral-100">
       <Sidebar />
       <main className="flex-1 p-6">
         <Suspense fallback={<div>Loading...</div>}>

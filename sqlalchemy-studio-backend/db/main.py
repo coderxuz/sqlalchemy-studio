@@ -7,7 +7,7 @@ import uvicorn
 
 from backend.main import create_tables_router
 
-from typing import Self, TypedDict
+from typing import Self, TypedDict, Any, cast
 
 engine = create_engine("sqlite:///test.db")
 
@@ -15,6 +15,20 @@ engine = create_engine("sqlite:///test.db")
 class TablesType(TypedDict):
     table: str
     columns: list[dict]
+
+
+class ColumnDetails(TypedDict):
+    name: str
+    type: str
+    nullable: bool
+    default: Any
+    primary_key: bool
+
+
+class SingleTableType(TypedDict):
+    table: str
+    primary_keys: list[str]
+    columns: list[ColumnDetails]
 
 
 class Studio:
@@ -27,7 +41,12 @@ class Studio:
         self.base = base
 
     def _set_cors(self):
-        origins = ["http://localhost:5500", "http://localhost:5173", "http://localhost:8000", "http://localhost:3000"]
+        origins = [
+            "http://localhost:5500",
+            "http://localhost:5173",
+            "http://localhost:8000",
+            "http://localhost:3000",
+        ]
         self.app.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
@@ -60,6 +79,57 @@ class Studio:
                 }
             )
         return tables_list
+
+    def show_table(self: Self, table_name: str) -> SingleTableType:
+        """
+        Returns the structural data (columns, types, primary keys)
+        for a single specified table with strict typing for MyPy.
+        """
+        # 1. Check if the table exists
+        if not self.inspector.has_table(table_name):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Table '{table_name}' not found.",
+            )
+
+        # 2. Reflect the table (keeps metadata clean/extended)
+        Table(
+            table_name,
+            self.base.metadata,
+            autoload_with=self.engine,
+            extend_existing=True,
+        )
+
+        # 3. Extract primary key details safely
+        pk_constraint = self.inspector.get_pk_constraint(table_name) or {}
+        # MyPy needs to know this evaluates cleanly to a list of strings
+        primary_keys = cast(list[str], pk_constraint.get("constrained_columns", []))
+
+        # 4. Extract and type-cast column information
+        columns_data: list[ColumnDetails] = []
+
+        # self.inspector.get_columns returns a list of dictionaries
+        raw_columns = self.inspector.get_columns(table_name)
+
+        for col in raw_columns:
+            columns_data.append(
+                {
+                    "name": cast(str, col["name"]),
+                    "type": str(col["type"]),  # Stringify the type object for JSON
+                    "nullable": bool(col["nullable"]),
+                    "default": col.get("default"),
+                    "primary_key": col.get("primary_key", 0) > 0,
+                }
+            )
+
+        # 5. Construct the final strictly typed response
+        response_data: SingleTableType = {
+            "table": table_name,
+            "primary_keys": primary_keys,
+            "columns": columns_data,
+        }
+
+        return response_data
 
     def get_rows(self, table_name: str, limit: int = 10):
         """
