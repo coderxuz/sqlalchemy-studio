@@ -1,0 +1,31 @@
+
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+.app-root {
+  min-height: 100vh;
+}
+
+/* Simple scrollbar styling for the sidebar */
+.app-root ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.app-root ::-webkit-scrollbar-thumb {
+  background: rgba(148,163,184,0.12);
+  border-radius: 8px;
+}
+
