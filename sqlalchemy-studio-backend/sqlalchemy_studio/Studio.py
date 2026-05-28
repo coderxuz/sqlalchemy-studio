@@ -1,18 +1,21 @@
 from sqlalchemy import and_, create_engine, func, inspect, Engine, or_, select, Table
 from sqlalchemy.engine.interfaces import ReflectedColumn
 from sqlalchemy.orm import DeclarativeBase
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from importlib.resources import files
+from fastapi.responses import FileResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import uvicorn
 
 
-from backend.main import create_tables_router
+from sqlalchemy_studio.backend import create_tables_router
 
 from typing import Self, TypedDict, Any, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from backend.main import FilterRequest
+    from sqlalchemy_studio.backend import FilterRequest
 
 engine = create_engine("sqlite:///test.db")
 
@@ -49,7 +52,7 @@ class Studio:
         self._register_routes()
         # Serve built frontend from the `static` directory at the project root.
         # Keep this catch-all mount after API routes so `/api/*` resolves first.
-        
+
         self._set_cors()
         self.base = base
 
@@ -70,9 +73,36 @@ class Studio:
 
     def _register_routes(self):
         self.app.include_router(create_tables_router(self))
-        self.app.mount("/", StaticFiles(directory="static", html=True), name="static")
+        static_dir = files("sqlalchemy_studio").joinpath("static")
+        
+        if static_dir.is_dir():
+            self.app.mount(
+                "/",
+                StaticFiles(directory=str(static_dir), html=True),
+                name="static",
+            )
+            # SPA fallback: return index.html for any non-API path so client-side
+            # routing (e.g. /tables/users) works. Keep API routes handled above.
+            index_file = static_dir.joinpath("index.html")
+            if index_file.exists():
+
+                async def spa_404_handler(
+                    request: Request, exc: StarletteHTTPException
+                ):
+                    if exc.status_code == 404 and not request.url.path.startswith(
+                        "/api"
+                    ):
+                        return FileResponse(str(index_file))
+                    raise exc
+
+                self.app.add_exception_handler(StarletteHTTPException, spa_404_handler)
 
     def run(self, port: int = 8000):
+        print("-" * 50)
+        print("-" * 50)
+        print(f"link:http://localhost:{port}")
+        print("-" * 50)
+        print("-" * 50)
         uvicorn.run(self.app, host="0.0.0.0", port=port)
 
     def show_tables(self: Self) -> list[TablesType]:

@@ -1,69 +1,73 @@
 # sqlalchemy-studio
 
-Full-stack tools for exploring SQLAlchemy databases.
+FastAPI studio for inspecting and querying SQLAlchemy databases.
 
-This repository contains two main parts:
+## Installation
 
-- `sqlalchemy-studio-backend`: a small FastAPI-based server (`Studio`) that inspects
-	databases and exposes a simple API under `/api`.
-- `sqlalchemy-studio-front`: a Vite + React single-page app used to browse tables and
-	interact with the backend API.
-
-Quickstart (development)
-
-1. Backend (start the Studio on a port):
-
-```py
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base
-from db.main import Studio
-
-Base = declarative_base()
-engine = create_engine("sqlite:///test.db")
-
-studio = Studio(engine, Base)
-studio.run(port=9000)
-```
-
-2. Frontend (dev server with proxy - recommended while developing):
+Install from PyPI:
 
 ```bash
-cd sqlalchemy-studio-front
-npm install
-# configure proxy in vite.config.ts to target backend port (example: 9000)
-npm run dev
+pip install sqlalchemy-studio
 ```
 
-Build & serve (production-like)
-
-1. Build the frontend:
+Or install the latest version from GitHub:
 
 ```bash
-npm --prefix sqlalchemy-studio-front install
-npm --prefix sqlalchemy-studio-front run build
+pip install --upgrade git+https://github.com/coderxuz/sqlalchemy-studio.git@main#subdirectory=sqlalchemy-studio-backend
 ```
 
-2. Copy the `dist` output into the backend `static` folder and run the backend:
+## Usage
+
+Create a normal SQLAlchemy engine and declarative base, then pass them to `Studio`.
+
+```python
+from sqlalchemy import Integer, String, create_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+
+from sqlalchemy_studio import Studio
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(50), nullable=False)
+    email: Mapped[str] = mapped_column(String(120), nullable=False)
+
+
+engine = create_engine("sqlite:///app.db")
+
+
+def seed_data() -> None:
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        if session.query(User).count() == 0:
+            session.add_all(
+                [
+                    User(username="john", email="john@example.com"),
+                    User(username="alice", email="alice@example.com"),
+                ]
+            )
+            session.commit()
+
+
+if __name__ == "__main__":
+    seed_data()
+    Studio(engine=engine, base=Base).run(port=7000)
+```
+
+Run the script:
 
 ```bash
-rm -rf sqlalchemy-studio-backend/static
-mkdir -p sqlalchemy-studio-backend/static
-cp -r sqlalchemy-studio-front/dist/* sqlalchemy-studio-backend/static/
-python -m test-db.main  # or use your application's entrypoint
+python app.py
 ```
 
-Notes
+Open `http://localhost:7000` in your browser.
 
-- API paths are mounted under `/api` to avoid SPA routing conflicts. When the backend
-	serves the built SPA the frontend can use relative paths like `/api/tables`.
-- To build the frontend pointing at a different backend port, set `VITE_API_URL` at build
-	time: `VITE_API_URL=http://localhost:9000 npm run build`.
-- See `sqlalchemy-studio-backend/README.md` for package publishing and packaging notes.
 
-Contributing
-
-PRs welcome. Please add tests and update README where applicable.
-
-License
-
-MIT — update as appropriate.
+![Example dashboard](image.png)

@@ -826,9 +826,9 @@ wheels = [
 ]
 
 [[package]]
-name = "sqlalchemy-studio-backend"
-version = "0.1.0"
-source = { virtual = "." }
+name = "sqlalchemy-studio"
+version = "0.1.8"
+source = { editable = "." }
 dependencies = [
     { name = "build" },
     { name = "fastapi" },

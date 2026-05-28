@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Query, HTTPException,status
+from fastapi import APIRouter, HTTPException, status
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from db.main import Studio
+    from studio.Studio import Studio
 
 from typing import Any, Literal, Self, TypedDict
 from pydantic import BaseModel, Field

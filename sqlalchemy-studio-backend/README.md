@@ -1,80 +1,74 @@
-# sqlalchemy-studio-backend
+# sqlalchemy-studio
 
-Backend utilities for inspecting and serving database tables via a FastAPI `Studio`.
+FastAPI studio for inspecting and querying SQLAlchemy databases.
 
-This package exposes a small FastAPI app that can be embedded in your application or run
-standalone to inspect a SQLAlchemy-accessible database.
+## Installation
 
-Quick summary
-- API endpoints (when using the packaged server):
-	- `GET /api/tables` — list tables and columns
-	- `GET /api/tables/{name}` — describe a single table
-	- `POST /api/{table_name}/query` — run the UI's advanced query payload
-
-Install
-
-```
-pip install sqlalchemy-studio-backend
-```
-
-Or install from the repository for development/testing:
-
-```
-pip install --upgrade git+https://github.com/yourusername/sqlalchemy-studio.git@main#subdirectory=sqlalchemy-studio-backend
-```
-
-Quickstart
-
-```py
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base
-from db.main import Studio
-
-Base = declarative_base()
-engine = create_engine("sqlite:///test.db")
-
-studio = Studio(engine, Base)
-# Starts uvicorn and serves API under /api
-studio.run(port=9000)
-# API available at http://localhost:9000/api
-```
-
-Serving a built frontend (optional)
-
-If you build the Vite frontend, copy its `dist` output into the backend `static` folder
-and the backend will serve the SPA from `/` while keeping the API under `/api`.
-
-Example:
+Install from PyPI:
 
 ```bash
-# from repository root
-npm --prefix sqlalchemy-studio-front install
-npm --prefix sqlalchemy-studio-front run build
-rm -rf sqlalchemy-studio-backend/static
-mkdir -p sqlalchemy-studio-backend/static
-cp -r sqlalchemy-studio-front/dist/* sqlalchemy-studio-backend/static/
+pip install sqlalchemy-studio
 ```
 
-Configuration notes
-- By default the package mounts static files at `/` and prefixes API routes with `/api` to
-	avoid SPA route collisions. Adjust `db/main.py` if you need a different layout.
-- CORS: `Studio` registers a small set of development origins. When serving the SPA
-	from the same server you won't need CORS; keep/update `Studio._set_cors` for other setups.
-
-Publishing
-
-1. Build the distribution locally:
+Or install the latest version from GitHub:
 
 ```bash
-python -m pip install --upgrade build twine
-python -m build
+pip install --upgrade git+https://github.com/coderxuz/sqlalchemy-studio.git@main#subdirectory=sqlalchemy-studio-backend
 ```
 
-2. Upload to PyPI (CI should set `PYPI_API_TOKEN`):
+## Usage
+
+Create a normal SQLAlchemy engine and declarative base, then pass them to `Studio`.
+
+```python
+from sqlalchemy import Integer, String, create_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+
+from sqlalchemy_studio import Studio
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(50), nullable=False)
+    email: Mapped[str] = mapped_column(String(120), nullable=False)
+
+
+engine = create_engine("sqlite:///app.db")
+
+
+def seed_data() -> None:
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        if session.query(User).count() == 0:
+            session.add_all(
+                [
+                    User(username="john", email="john@example.com"),
+                    User(username="alice", email="alice@example.com"),
+                ]
+            )
+            session.commit()
+
+
+if __name__ == "__main__":
+    seed_data()
+    Studio(engine=engine, base=Base).run(port=7000)
+```
+
+Run the script:
 
 ```bash
-python -m twine upload dist/*
+python app.py
 ```
 
-License
-MIT — update as appropriate.
+Open `http://localhost:7000` in your browser.
+
+
+
+![Example dashboard](image.png)

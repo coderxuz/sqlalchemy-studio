@@ -1,7 +1,11 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "sqlalchemy-studio-backend"
-version = "0.1.0"
-description = "Add your description here"
+name = "sqlalchemy-studio"
+version = "0.1.8"
+description = "FastAPI studio for inspecting SQLAlchemy databases"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -25,3 +29,9 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 urls = { "Homepage" = "https://github.com/coderxuz/sqlalchemy-studio", "Source" = "https://github.com/coderxuz/sqlalchemy-studio" }
+
+[tool.setuptools.packages.find]
+include = ["studio*", "sqlalchemy_studio*"]
+
+[tool.setuptools.package-data]
+sqlalchemy_studio = ["static/**/*"]
